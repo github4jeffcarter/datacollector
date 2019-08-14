@@ -291,9 +291,10 @@ public final class MSQueryUtil {
 
     if (txnWindow > 0) {
       declare_to_lsn = String.format(
-          "DECLARE @to_lsn binary(10) = " + "sys.fn_cdc_map_time_to_lsn('largest less than or equal', " +
-              "DATEADD(second, %s, sys.fn_cdc_map_lsn_to_time(@start_lsn))); ",
-          txnWindow
+        "DECLARE @alternate_time datetime;" +
+        "SET @alternate_time = DATEADD(second, %s, sys.fn_cdc_map_lsn_to_time(@start_lsn));" +
+        "IF @alternate_time is NULL SET @alternate_time = DATEADD(second, %s, sys.fn_cdc_map_lsn_to_time((select min(start_lsn) from [cdc].[lsn_time_mapping])));" +
+        "DECLARE @to_lsn binary(10) = " + "sys.fn_cdc_map_time_to_lsn('largest less than or equal', @alternate_time);", txnWindow, txnWindow
       );
       declare_to_lsn2 = String.format("IF @start_lsn = @to_lsn " +
           "SET @to_lsn = sys.fn_cdc_get_max_lsn(); ");
